@@ -24,7 +24,6 @@
 		<module>balance-service</module>
 		<module>gateway-service</module>
 		<module>customer-service</module>
-		<module>zipkin-service</module>
 		<module>hystrix-dashboard-service</module>
 	</modules>
 
