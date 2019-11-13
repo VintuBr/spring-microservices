@@ -60,10 +60,10 @@ pipeline {
       steps {
         // Copy the resulting artifacts into common directory
         sh """
-          ls target/*
+          find ./*/target -type f -name "*.jar"
           rm -rf oc-build && mkdir -p oc-build/deployments
-          for t in \$(echo "jar;war;ear" | tr ";" "\\n"); do
-            cp -rfv ./target/*.\$t oc-build/deployments/ 2> /dev/null || echo "No \$t files"
+          for f in \$(find ./*/target -type f -name "*.jar"); do
+            cp -rfv \$f oc-build/deployments/ 2> /dev/null || echo "No \$f files"
           done
         """
 
