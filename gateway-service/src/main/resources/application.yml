@@ -1,0 +1,67 @@
+server:
+  port: 8765
+
+info:
+  component: Edge Server
+  
+endpoints:
+  restart:
+    enabled: true
+  shutdown:
+    enabled: true
+  health:
+    sensitive: false
+
+zuul:
+  prefix: /api
+  routes:
+    account: 
+      path: /account/**
+      serviceId: account-service
+    customer: 
+      path: /customer/**
+      serviceId: customer-service          
+    balance:
+      path: /balance/**
+      serviceId: balance-service
+  host:
+    time-to-live: -1
+    connect-timeout-millis: 5000
+    max-per-route-connections: 10000
+    max-total-connections: 5000
+    socket-timeout-millis: 60000
+  semaphore:
+    max-semaphores: 500
+
+#spring:
+#  cloud:
+#    loadbalancer:
+#      ribbon:
+#        enabled: false
+
+ribbon:
+  eureka:
+    enabled: true
+  ConnectTimeout: 10000
+  ReadTimeout: 10000
+
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 20000
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${DISCOVERY_URL:http://localhost:8761}/eureka/
+    registerWithEureka: false
+    registryFetchIntervalSeconds: 5
+
+
+logging:
+  level:
+    ROOT: INFO
+    org.springframework.web: DEBUG
