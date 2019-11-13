@@ -12,8 +12,8 @@ openshift.withCluster() {
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
   echo "Starting Pipeline for ${APP_NAME} - POM: ${POM_FILE}..."
   //env.BUILD = "${env.NAMESPACE}"
-  env.DEV = "${APP_NAME}-dev"
-  env.PROD = "${APP_NAME}"
+  env.DEV = "spring-cloud-demo-dev"
+  env.PROD = "spring-cloud-demo"
 }
 
 pipeline {
