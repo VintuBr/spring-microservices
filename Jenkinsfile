@@ -70,6 +70,33 @@ pipeline {
         }
       }
    }
+   
+    stage('Create Image Builder') {
+        when {
+            expression {
+              openshift.withCluster() {
+                openshift.withProject(DEV_PROJECT) {
+                    def services_bc = SERVICE_PROJECTS.split(',').stream().filter(v -> !openshift.selector("bc", v + "-bc").exists()).collect();
+                    return services_bc;
+                  }
+               }
+            }
+        }
+        
+        steps {
+            script {
+                openshift.withCluster() {
+                    openshift.withProject(DEV_PROJECT) {
+                        def services_bc = SERVICE_PROJECTS.split(',').stream().filter(v -> !openshift.selector("bc", v + "-bc").exists()).collect();
+                        
+                        services_bc.each { service ->
+                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
+                        }
+                    }
+                }
+            }
+        }
+    }   
   
     // Build Container Image using the artifacts produced in previous stages
     stage('Build Container Image'){
