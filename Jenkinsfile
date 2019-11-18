@@ -22,46 +22,7 @@ pipeline {
 
   // Pipeline Stages start here
   // Requeres at least one stage
-  stages {
-
-    stage('Create Image Builder') {
-        when {
-            expression {
-              openshift.withCluster() {
-                openshift.withProject(DEV_PROJECT) {
-					def services_bc_lst = []
-					services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-
-					services_bc_lst.each { svc ->
-						def svc_bc_name = svc + "-bc";
-						def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
-						println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
-					}
-				
-                    services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it + "-bc").exists() };
-					
-                    return services_bc;
-                  }
-               }
-            }
-        }
-        
-        steps {
-            script {
-                openshift.withCluster() {
-                    openshift.withProject(DEV_PROJECT) {
-						def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> !openshift.selector("bc", svc + "-bc").exists() };
-						println("Step execution: [${services_bc}]");
-
-                        services_bc.each { service ->
-                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
-                        }
-                    }
-                }
-            }
-        }
-    }   
-  
+  stages {  
     // Checkout source code
     // This is required as Pipeline code is originally checkedout to
     // Jenkins Master but this will also pull this same code to this slave
@@ -108,7 +69,48 @@ pipeline {
         }
       }
    }
-     
+
+    stage('Create Image Builder') {
+        when {
+            expression {
+              openshift.withCluster() {
+                openshift.withProject(DEV_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+
+                    services_bc_lst.each { svc ->
+                        def svc_bc_name = svc + "-bc";
+                        def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
+                        println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
+                    }
+                
+                    services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it + "-bc").exists() };
+                    
+                    return services_bc;
+                  }
+               }
+            }
+        }
+        
+        steps {
+            script {
+                openshift.withCluster() {
+                    openshift.withProject(DEV_PROJECT) {
+                        def services_bc_lst = []
+                        services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                    
+                        def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("bc", svc + "-bc").exists() };
+                        println("Step execution: [${services_bc}]");
+
+                        services_bc.each { service ->
+                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
+                        }
+                    }
+                }
+            }
+        }
+    }   
+      
     // Build Container Image using the artifacts produced in previous stages
     stage('Build Container Image'){
       steps {
