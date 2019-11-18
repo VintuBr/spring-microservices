@@ -79,7 +79,8 @@ pipeline {
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
 
                     services_bc_lst.each { svc ->
-                        def svc_bc_name = svc + "-bc";
+                        //def svc_bc_name = svc + "-bc";
+						def svc_bc_name = svc;
                         def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
                         println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
                     }
@@ -99,7 +100,7 @@ pipeline {
                         def services_bc_lst = []
                         services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     
-                        def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("bc", svc + "-bc").exists() };
+                        def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("bc", svc).exists() };
                         println("Step execution: [${services_bc}]");
 
                         services_bc.each { service ->
@@ -120,7 +121,7 @@ pipeline {
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
 					services_bc_lst.each { APPLICATION_NAME -> 
 						println("Building application: [${APPLICATION_NAME}]");
-						openshift.selector("bc", "${APPLICATION_NAME}-bc").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
+						openshift.selector("bc", "${APPLICATION_NAME}").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
 					}
 				}
 			  }
