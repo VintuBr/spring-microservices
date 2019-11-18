@@ -1,20 +1,13 @@
-library identifier: "pipeline-library@v1.4",
-retriever: modernSCM(
-  [
-    $class: "GitSCMSource",
-    remote: "https://github.com/redhat-cop/pipeline-library.git"
-  ]
-)
-
 openshift.withCluster() {
+  env.SERVICE_PROJECTS = "discovery-service,account-service,balance-service,customer-service,hystrix-dashboard-service,gateway-service"
   env.ARTIFACT_FOLDER = "all_targets"
   env.NAMESPACE = openshift.project()
   env.POM_FILE = env.BUILD_CONTEXT_DIR ? "${env.BUILD_CONTEXT_DIR}/pom.xml" : "pom.xml"
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
-  echo "Starting Pipeline for ${APP_NAME} - POM: ${POM_FILE}..."
   //env.BUILD = "${env.NAMESPACE}"
-  env.DEV = "spring-cloud-demo-dev"
-  env.PROD = "spring-cloud-demo"
+  env.DEV_PROJECT = "spring-cloud-demo-dev"
+  env.PROD_PROJECT = "spring-cloud-demo"
+  echo "Starting Pipeline for ${APP_NAME} - ${env.NAMESPACE} - POM: ${POM_FILE}..."
 }
 
 pipeline {
@@ -59,25 +52,25 @@ pipeline {
     stage('Store Artifact'){
       steps{
         script{
-			['discovery-service', 'account-service', 'balance-service', 'customer-service', 'hystrix-dashboard-service','gateway-service'].each { APPLICATION_NAME ->
-				def safeBuildName  = "${APPLICATION_NAME}_${BUILD_NUMBER}",
-					artifactFolder = "${ARTIFACT_FOLDER}",
-					fullFileName   = "${safeBuildName}.tar.gz",
-					applicationZip = "${artifactFolder}/${fullFileName}"
-					applicationDir = ["${APPLICATION_NAME}/target/${APPLICATION_NAME}.jar",
-									  "${APPLICATION_NAME}/Dockerfile",
-									  ].join(" ");
-				def needTargetPath = !fileExists("${artifactFolder}")
-				if (needTargetPath) {
-					sh "mkdir ${artifactFolder}"
-				}
-				sh "tar -czvf ${applicationZip} ${applicationDir}"
-				archiveArtifacts artifacts: "${applicationZip}", excludes: null, onlyIfSuccessful: true			
-			}
+            SERVICE_PROJECTS.split(',').each { APPLICATION_NAME ->
+                def safeBuildName  = "${APPLICATION_NAME}_${BUILD_NUMBER}",
+                    artifactFolder = "${ARTIFACT_FOLDER}",
+                    fullFileName   = "${safeBuildName}.tar.gz",
+                    applicationZip = "${artifactFolder}/${fullFileName}"
+                    applicationDir = ["${APPLICATION_NAME}/target/${APPLICATION_NAME}.jar",
+                                      "${APPLICATION_NAME}/Dockerfile",
+                                      ].join(" ");
+                def needTargetPath = !fileExists("${artifactFolder}")
+                if (needTargetPath) {
+                    sh "mkdir ${artifactFolder}"
+                }
+                sh "tar -czvf ${applicationZip} ${applicationDir}"
+                archiveArtifacts artifacts: "${applicationZip}", excludes: null, onlyIfSuccessful: true         
+            }
         }
       }
    }
-        
+  
     // Build Container Image using the artifacts produced in previous stages
     stage('Build Container Image'){
       steps {
