@@ -104,7 +104,7 @@ pipeline {
                         println("Step execution: [${services_bc}]");
 
                         services_bc.each { service ->
-                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
+                            openshift.newBuild("--name=${service}", "--docker-image=docker.io/java:8-alpine", "--binary=true")
                         }
                     }
                 }
