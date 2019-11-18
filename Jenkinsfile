@@ -118,7 +118,7 @@ x    stage('Create Image Builder') {
 			    openshift.withProject(env.DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-					services_bc_lst.each { APPLICATION_NAME -> {
+					services_bc_lst.each { APPLICATION_NAME -> 
 						println("Building application: [${APPLICATION_NAME}]");
 						openshift.selector("bc", "${APPLICATION_NAME}-bc").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
 					}
