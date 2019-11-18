@@ -24,12 +24,49 @@ pipeline {
   // Requeres at least one stage
   stages {
 
+    stage('Create Image Builder') {
+        when {
+            expression {
+              openshift.withCluster() {
+                openshift.withProject(DEV_PROJECT) {
+					SERVICE_PROJECTS.split(',').each { svc ->
+						println("Describe: [${svc}]");
+						svc_bc_exists = openshift.selector("bc", svc + "-bc").exists();
+						println("Exists: [${svc_bc_exists}]");
+					}
+				
+                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
+					
+					println("When expression result: [${services_bc}]");
+					
+                    return services_bc;
+                  }
+               }
+            }
+        }
+        
+        steps {
+            script {
+                openshift.withCluster() {
+                    openshift.withProject(DEV_PROJECT) {
+						def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
+						println("Step execution: [${services_bc}]");
+
+                        services_bc.each { service ->
+                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
+                        }
+                    }
+                }
+            }
+        }
+    }   
+  
     // Checkout source code
     // This is required as Pipeline code is originally checkedout to
     // Jenkins Master but this will also pull this same code to this slave
     stage('Git Checkout') {
       steps {
-        // Turn off Git's SSL cert check, uncomment if needed
+        // Turn off Git''s SSL cert check, uncomment if needed
         // sh 'git config --global http.sslVerify false'
         git url: "${APPLICATION_SOURCE_REPO}", branch: "${APPLICATION_SOURCE_REF}"
       }
@@ -70,43 +107,7 @@ pipeline {
         }
       }
    }
-   
-    stage('Create Image Builder') {
-        when {
-            expression {
-              openshift.withCluster() {
-                openshift.withProject(DEV_PROJECT) {
-					openshift.selector("bc").describe();
-					SERVICE_PROJECTS.split(',').each { svc ->
-						openshift.selector("bc", svc + "-bc").describe();
-					}
-				
-                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
-					
-					println("When expression result: [${services_bc}]");
-					
-                    return services_bc;
-                  }
-               }
-            }
-        }
-        
-        steps {
-            script {
-                openshift.withCluster() {
-                    openshift.withProject(DEV_PROJECT) {
-						def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
-						println("Step execution: [${services_bc}]");
-
-                        services_bc.each { service ->
-                            openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
-                        }
-                    }
-                }
-            }
-        }
-    }   
-  
+     
     // Build Container Image using the artifacts produced in previous stages
     stage('Build Container Image'){
       steps {
