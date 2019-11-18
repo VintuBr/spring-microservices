@@ -76,7 +76,8 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-                    def services_bc = Stream.from(SERVICE_PROJECTS.split(',')).filter { v -> !openshift.selector("bc", v + "-bc").exists() }.collect();
+					Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
+                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
                     return services_bc;
                   }
                }
@@ -87,8 +88,9 @@ pipeline {
             script {
                 openshift.withCluster() {
                     openshift.withProject(DEV_PROJECT) {
-                        def services_bc = Stream.from(SERVICE_PROJECTS.split(',')).filter { v -> !openshift.selector("bc", v + "-bc").exists() }.collect();
-                        
+						Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
+						def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
+
                         services_bc.each { service ->
                             openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
                         }
