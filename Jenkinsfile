@@ -76,8 +76,12 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-					Closure created_bc = { println(it); !openshift.selector("bc", it + "-bc").exists() };
-                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
+					openshift.selector("bc").describe();
+					SERVICE_PROJECTS.split(',').each { svc ->
+						openshift.selector("bc", svc + "-bc").describe();
+					}
+				
+                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
 					
 					println("When expression result: [${services_bc}]");
 					
@@ -91,8 +95,7 @@ pipeline {
             script {
                 openshift.withCluster() {
                     openshift.withProject(DEV_PROJECT) {
-						Closure created_bc = { println(it); !openshift.selector("bc", it + "-bc").exists() };
-						def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
+						def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
 						println("Step execution: [${services_bc}]");
 
                         services_bc.each { service ->
