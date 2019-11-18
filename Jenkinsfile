@@ -76,7 +76,7 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-                    def services_bc = SERVICE_PROJECTS.split(',').stream().filter(v -> !openshift.selector("bc", v + "-bc").exists()).collect();
+                    def services_bc = SERVICE_PROJECTS.split(',').stream().filter { v -> !openshift.selector("bc", v + "-bc").exists() }.collect();
                     return services_bc;
                   }
                }
