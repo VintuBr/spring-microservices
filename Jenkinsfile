@@ -7,6 +7,7 @@ retriever: modernSCM(
 )
 
 openshift.withCluster() {
+  env.ARTIFACT_FOLDER = "all_targets"
   env.NAMESPACE = openshift.project()
   env.POM_FILE = env.BUILD_CONTEXT_DIR ? "${env.BUILD_CONTEXT_DIR}/pom.xml" : "pom.xml"
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
