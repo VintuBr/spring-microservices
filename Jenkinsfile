@@ -35,7 +35,7 @@ pipeline {
 						println("Exists: [${svc_bc_exists}]");
 					}
 				
-                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> println(svc); !openshift.selector("bc", svc + "-bc").exists() };
+                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> !openshift.selector("bc", svc + "-bc").exists() };
 					
 					println("When expression result: [${services_bc}]");
 					
