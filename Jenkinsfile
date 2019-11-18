@@ -76,7 +76,7 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-					Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
+					Closure created_bc = { println(it); !openshift.selector("bc", it + "-bc").exists() };
                     def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
 					
 					println("When expression result: [${services_bc}]");
@@ -91,7 +91,7 @@ pipeline {
             script {
                 openshift.withCluster() {
                     openshift.withProject(DEV_PROJECT) {
-						Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
+						Closure created_bc = { println(it); !openshift.selector("bc", it + "-bc").exists() };
 						def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
 						println("Step execution: [${services_bc}]");
 
