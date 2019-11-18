@@ -78,6 +78,9 @@ pipeline {
                 openshift.withProject(DEV_PROJECT) {
 					Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
                     def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
+					
+					println("When expression result: [${services_bc}]");
+					
                     return services_bc;
                   }
                }
@@ -90,6 +93,7 @@ pipeline {
                     openshift.withProject(DEV_PROJECT) {
 						Closure created_bc = { !openshift.selector("bc", it + "-bc").exists() };
 						def services_bc = SERVICE_PROJECTS.split(',').findAll{ created_bc };
+						println("Step execution: [${services_bc}]");
 
                         services_bc.each { service ->
                             openshift.newBuild("--name=${service}-bc", "--docker-image=docker.io/java:8-alpine", "--binary=true")
