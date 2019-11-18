@@ -55,6 +55,28 @@ pipeline {
       }
     }
 
+    stage('Store Artifact'){
+      steps{
+        script{
+			['discovery-service', 'account-service', 'balance-service', 'customer-service', 'hystrix-dashboard-service','gateway-service'].each { APPLICATION_NAME ->
+				def safeBuildName  = "${APPLICATION_NAME}_${BUILD_NUMBER}",
+					artifactFolder = "${ARTIFACT_FOLDER}",
+					fullFileName   = "${safeBuildName}.tar.gz",
+					applicationZip = "${artifactFolder}/${fullFileName}"
+					applicationDir = ["${APPLICATION_NAME}/target/${APPLICATION_NAME}.jar",
+									  "${APPLICATION_NAME}/Dockerfile",
+									  ].join(" ");
+				def needTargetPath = !fileExists("${artifactFolder}")
+				if (needTargetPath) {
+					sh "mkdir ${artifactFolder}"
+				}
+				sh "tar -czvf ${applicationZip} ${applicationDir}"
+				archiveArtifacts artifacts: "${applicationZip}", excludes: null, onlyIfSuccessful: true			
+			}
+        }
+      }
+   }
+        
     // Build Container Image using the artifacts produced in previous stages
     stage('Build Container Image'){
       steps {
