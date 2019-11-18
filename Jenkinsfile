@@ -29,13 +29,14 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-					SERVICE_PROJECTS.split(',').each { svc ->
+					def svc_projects = SERVICE_PROJECTS.split(',');
+					svc_projects.each { svc ->
 						def svc_bc_name = svc + "-bc";
 						def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
 						println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
 					}
 				
-                    def services_bc = SERVICE_PROJECTS.split(',').findAll{ svc -> !openshift.selector("bc", svc + "-bc").exists() };
+                    def services_bc = svc_projects.findAll{ !openshift.selector("bc", it + "-bc").exists() };
 					
 					println("When expression result: [${services_bc}]");
 					
