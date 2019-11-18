@@ -85,7 +85,7 @@ pipeline {
                         println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
                     }
                 
-                    services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it + "-bc").exists() };
+                    services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it).exists() };
                     
                     return services_bc;
                   }
