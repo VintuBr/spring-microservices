@@ -56,14 +56,14 @@ pipeline {
                     artifactFolder = "${ARTIFACT_FOLDER}",
                     fullFileName   = "${safeBuildName}.tar.gz",
                     applicationZip = "${artifactFolder}/${fullFileName}"
-                    applicationDir = ["${APPLICATION_NAME}/target/${APPLICATION_NAME}.jar",
-                                      "${APPLICATION_NAME}/Dockerfile",
+                    applicationDir = ["target/${APPLICATION_NAME}.jar",
+                                      "Dockerfile",
                                       ].join(" ");
                 def needTargetPath = !fileExists("${artifactFolder}")
                 if (needTargetPath) {
                     sh "mkdir ${artifactFolder}"
                 }
-                sh "tar -czvf ${applicationZip} ${applicationDir}"
+                sh "tar --directory=${APPLICATION_NAME} -czvf ${applicationZip} ${applicationDir}"
                 archiveArtifacts artifacts: "${applicationZip}", excludes: null, onlyIfSuccessful: true         
             }
         }
