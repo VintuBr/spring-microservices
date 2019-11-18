@@ -38,7 +38,7 @@ pipeline {
 				
                     def services_bc = svc_projects.findAll{ !openshift.selector("bc", it + "-bc").exists() };
 					
-					println("When expression result: [${services_bc}]");
+					println(services_bc);
 					
                     return services_bc;
                   }
