@@ -70,7 +70,7 @@ pipeline {
       }
    }
 
-    stage('Create Image Builder') {
+x    stage('Create Image Builder') {
         when {
             expression {
               openshift.withCluster() {
@@ -110,26 +110,43 @@ pipeline {
             }
         }
     }   
-      
+	
+	stage('Build Image') {
+	  steps {
+		  script {
+			  openshift.withCluster() {
+			    openshift.withProject(env.DEV_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+					services_bc_lst.each { APPLICATION_NAME -> {
+						println("Building application: [${APPLICATION_NAME}]");
+						openshift.selector("bc", "${APPLICATION_NAME}-bc").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
+					}
+				}
+			  }
+		  }
+	  }
+	}
+	
     // Build Container Image using the artifacts produced in previous stages
-    stage('Build Container Image'){
-      steps {
+    //stage('Build Container Image'){
+      //steps {
         // Copy the resulting artifacts into common directory
-        sh """
-          find ./*/target -type f -name "*.jar"
-          rm -rf oc-build && mkdir -p oc-build/deployments
-          for f in \$(find ./*/target -type f -name "*.jar"); do
-            cp -rfv \$f oc-build/deployments/ 2> /dev/null || echo "No \$f files"
-          done
-        """
+        //sh """
+        //  find ./*/target -type f -name "*.jar"
+        //  rm -rf oc-build && mkdir -p oc-build/deployments
+        //  for f in \$(find ./*/target -type f -name "*.jar"); do
+        //    cp -rfv \$f oc-build/deployments/ 2> /dev/null || echo "No \$f files"
+        //  done
+        //"""
 
         // Build container image using local Openshift cluster
         // Giving all the artifacts to OpenShift Binary Build
         // This places your artifacts into right location inside your S2I image
         // if the S2I image supports it.
-        binaryBuild(projectName: env.DEV, buildConfigName: env.APP_NAME, buildFromPath: "oc-build")
-      }
-    }
+        //binaryBuild(projectName: env.DEV, buildConfigName: env.APP_NAME, buildFromPath: "oc-build")
+     // }
+    //}
 
 //    stage('Promote from Build to Dev') {
 //      steps {
