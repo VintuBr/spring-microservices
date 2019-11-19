@@ -183,6 +183,7 @@ pipeline {
                   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                   
                   services_bc_lst.each { APPLICATION_NAME -> 
+                    println("Promoting to Production: [${APPLICATION_NAME}] with tag: [latestProd]");
                     openshift.tag("${DEV_PROJECT}/${APPLICATION_NAME}:latest", "${PROD_PROJECT}/${APPLICATION_NAME}:latestProd")
                   }
               }
@@ -198,7 +199,12 @@ pipeline {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     services_bc.each { APPLICATION_NAME -> 
+                    
+                    def dc_exists = openshift.selector('dc', '${APPLICATION_NAME}').exists();
+                    println("Promoting to Production: [${APPLICATION_NAME}] - DC exists: [${dc_exists}]");
+                    
                     if (openshift.selector('dc', '${APPLICATION_NAME}').exists()) {
+                        println("Promoting to Production: [${APPLICATION_NAME}] deleting: [dc][svc][route]");
                         openshift.selector('dc', '${APPLICATION_NAME}').delete()
                         openshift.selector('svc', '${APPLICATION_NAME}').delete()
                         openshift.selector('route', '${APPLICATION_NAME}').delete()
