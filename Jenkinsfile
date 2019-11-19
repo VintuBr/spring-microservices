@@ -75,12 +75,13 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
+                    openshift.verbose();
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
 
                     services_bc_lst.each { svc ->
                         //def svc_bc_name = svc + "-bc";
-						def svc_bc_name = svc;
+                        def svc_bc_name = svc;
                         def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
                         println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
                     }
@@ -96,6 +97,7 @@ pipeline {
         steps {
             script {
                 openshift.withCluster() {
+                    openshift.verbose();
                     openshift.withProject(DEV_PROJECT) {
                         def services_bc_lst = []
                         services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
@@ -110,45 +112,26 @@ pipeline {
                 }
             }
         }
-    }   
-	
-	stage('Build Image') {
-	  steps {
-		  script {
-			  openshift.withCluster() {
-			    openshift.withProject(env.DEV_PROJECT) {
+    }
+    
+    stage('Build Image') {
+      steps {
+          script {
+              openshift.withCluster() {
+                openshift.verbose();
+                openshift.withProject(env.DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-					services_bc_lst.each { APPLICATION_NAME -> 
-						println("Building application: [${APPLICATION_NAME}]");
-						openshift.selector("bc", "${APPLICATION_NAME}").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
-					}
-				}
-			  }
-		  }
-	  }
-	}
-	
-    // Build Container Image using the artifacts produced in previous stages
-    //stage('Build Container Image'){
-      //steps {
-        // Copy the resulting artifacts into common directory
-        //sh """
-        //  find ./*/target -type f -name "*.jar"
-        //  rm -rf oc-build && mkdir -p oc-build/deployments
-        //  for f in \$(find ./*/target -type f -name "*.jar"); do
-        //    cp -rfv \$f oc-build/deployments/ 2> /dev/null || echo "No \$f files"
-        //  done
-        //"""
-
-        // Build container image using local Openshift cluster
-        // Giving all the artifacts to OpenShift Binary Build
-        // This places your artifacts into right location inside your S2I image
-        // if the S2I image supports it.
-        //binaryBuild(projectName: env.DEV, buildConfigName: env.APP_NAME, buildFromPath: "oc-build")
-     // }
-    //}
-
+                    services_bc_lst.each { APPLICATION_NAME -> 
+                        println("Building application: [${APPLICATION_NAME}]");
+                        openshift.selector("bc", "${APPLICATION_NAME}").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
+                    }
+                }
+              }
+          }
+      }
+    }
+    
 //    stage('Promote from Build to Dev') {
 //      steps {
 //        tagImage(sourceImageName: env.APP_NAME, sourceImagePath: env.BUILD, toImagePath: env.DEV)
