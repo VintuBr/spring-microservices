@@ -154,7 +154,7 @@ pipeline {
 				openshift.withProject(env.DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-					def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("bc", svc.take(24)).exists() };
+					def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc.take(24)).exists() };
 					println("Step execution - Will create DC for: [${services_bc}]");
                     services_bc.each { APPLICATION_NAME -> 
                     println("Deploy application: [${APPLICATION_NAME}]");
