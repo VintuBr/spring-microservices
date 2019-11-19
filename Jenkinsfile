@@ -75,7 +75,6 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-                    openshift.verbose();
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
 
@@ -97,7 +96,6 @@ pipeline {
         steps {
             script {
                 openshift.withCluster() {
-                    openshift.verbose();
                     openshift.withProject(DEV_PROJECT) {
                         def services_bc_lst = []
                         services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
@@ -118,7 +116,6 @@ pipeline {
       steps {
           script {
               openshift.withCluster() {
-                openshift.verbose();
                 openshift.withProject(env.DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
@@ -179,6 +176,7 @@ pipeline {
           }
           script {            
               openshift.withCluster() {
+                  //openshift.verbose();
                   def services_bc_lst = []
                   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                   
@@ -194,8 +192,10 @@ pipeline {
     stage('Rollout to Production') {
       steps {
           script {
+				println("Inside script");
+				openshift.verbose();
                 openshift.withCluster() {
-                  openshift.withProject(PROD_PROJECT) {
+                  openshift.withProject(env.PROD_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     services_bc.each { APPLICATION_NAME -> 
