@@ -132,87 +132,82 @@ pipeline {
       }
     }
     
-	stage('Deploy to DEV') {
-	  when {
-		  expression {
-			openshift.withCluster() {
-			  openshift.withProject(env.DEV_PROJECT) {
-				def services_bc_lst = []
+    stage('Deploy to Dev') {
+      when {
+          expression {
+            openshift.withCluster() {
+              openshift.withProject(env.DEV_PROJECT) {
+                def services_bc_lst = []
                 services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-				def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc.take(24)).exists() };
-				println("Deploy to DEV: [${services_bc}]");
-				
-				return services_bc;
-			  }
-			}
-		}
-	  }
-	  
-	  steps {
-		script {
-			openshift.withCluster() {
-				openshift.withProject(env.DEV_PROJECT) {
-                    def services_bc_lst = []
-                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-					def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc.take(24)).exists() };
-					println("Step execution - Will create DC for: [${services_bc}]");
-                    services_bc.each { APPLICATION_NAME -> 
-                    println("Deploy application: [${APPLICATION_NAME}]");
-					def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
-					//app.narrow("svc").expose("--port=${PORT}");
-					def dc = openshift.selector("dc", "${APPLICATION_NAME}")
-					while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
-						println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
-						sleep 10
-					  }
-                    }
-				 }
-			  }
-		  }
-	  }
-	}
-	
-//    stage('Promote from Build to Dev') {
-//      steps {
-//        tagImage(sourceImageName: env.APP_NAME, sourceImagePath: env.BUILD, toImagePath: env.DEV)
-//      }
-//    }
-
-    stage ('Verify Deployment to Dev') {
-      steps {
-        verifyDeployment(projectName: env.DEV, targetApp: env.APP_NAME)
-      }
-    }
-
-//    stage('Promote from Dev to Stage') {
-//      steps {
-//        tagImage(sourceImageName: env.APP_NAME, sourceImagePath: env.DEV, toImagePath: env.STAGE)
-//      }
-//    }
-
-//    stage ('Verify Deployment to Stage') {
-//      steps {
-//        verifyDeployment(projectName: env.STAGE, targetApp: env.APP_NAME)
-//      }
-//    }
-
-    stage('Promotion gate') {
-      steps {
-        script {
-          input message: 'Promote application to Production?'
+                def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc.take(24)).exists() };
+                println("[When] Deploy to Dev: [${services_bc}]");
+                
+                return services_bc;
+              }
+            }
         }
       }
-    }
-
-    stage('Promote from Stage to Prod') {
+      
       steps {
-        tagImage(sourceImageName: env.APP_NAME, sourceImagePath: env.DEV, toImagePath: env.PROD)
+        script {
+            openshift.withCluster() {
+                openshift.withProject(env.DEV_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                    def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc.take(24)).exists() };
+                    println("Step execution - Will create DC for: [${services_bc}]");
+                    services_bc.each { APPLICATION_NAME -> 
+                    println("Deploy application: [${APPLICATION_NAME}]");
+                    def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
+                    //app.narrow("svc").expose("--port=${PORT}");
+                    def dc = openshift.selector("dc", "${APPLICATION_NAME}");
+                    while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
+                        println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
+                        sleep 10
+                      }
+                    }
+                 }
+              }
+          }
       }
     }
 
-    stage ('Verify Deployment to Prod') {
+    stage('Promote to Production?') {
       steps {
-        verifyDeployment(projectName: env.PROD, targetApp: env.APP_NAME)
+          timeout(time:15, unit:'MINUTES') {
+               input message: "Promote to Production?", ok: "Promote"
+          }
+          script {            
+              openshift.withCluster() {
+                  def services_bc_lst = []
+                  services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                  
+                  services_bc_lst.each { APPLICATION_NAME -> 
+                    openshift.tag("${DEV_PROJECT}/${APPLICATION_NAME}:latest", "${PROD_PROJECT}/${APPLICATION_NAME}:latestProd")
+                  }
+              }
+            }
+       }
+    }
+    
+    stage('Rollout to Production') {
+      steps {
+          script {
+                openshift.withCluster() {
+                  openshift.withProject(PROD_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                    services_bc.each { APPLICATION_NAME -> 
+                    if (openshift.selector('dc', '${APPLICATION_NAME}').exists()) {
+                        openshift.selector('dc', '${APPLICATION_NAME}').delete()
+                        openshift.selector('svc', '${APPLICATION_NAME}').delete()
+                        openshift.selector('route', '${APPLICATION_NAME}').delete()
+                    }
+                    openshift.newApp("${APPLICATION_NAME}:latestProd", "-e=DISCOVERY_URL=http://discovery-service:8761").narrow("svc");
+                }
+               }
+             }
+          }
       }
     }
   }
