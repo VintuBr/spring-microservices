@@ -159,7 +159,7 @@ pipeline {
                     services_bc.each { APPLICATION_NAME -> 
                     println("Deploy application: [${APPLICATION_NAME}]");
 					def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
-					app.narrow("svc").expose("--port=${PORT}");
+					//app.narrow("svc").expose("--port=${PORT}");
 					def dc = openshift.selector("dc", "${APPLICATION_NAME}")
 					while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
 						println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
