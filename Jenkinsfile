@@ -158,7 +158,7 @@ pipeline {
 					println("Step execution - Will create DC for: [${services_bc}]");
                     services_bc.each { APPLICATION_NAME -> 
                     println("Deploy application: [${APPLICATION_NAME}]");
-					def app = openshift.newApp("${APPLICATION_NAME}:latest")
+					def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
 					app.narrow("svc").expose("--port=${PORT}");
 					def dc = openshift.selector("dc", "${APPLICATION_NAME}")
 					while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
