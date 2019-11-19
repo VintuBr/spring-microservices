@@ -132,6 +132,43 @@ pipeline {
       }
     }
     
+	stage('Deploy to DEV') {
+	  when {
+		  expression {
+			openshift.withCluster() {
+			  openshift.withProject(env.DEV_PROJECT) {
+				def services_bc_lst = []
+                services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+				def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
+				println("Deploy to DEV: [${services_bc}]");
+				
+				return services_bc;
+			  }
+			}
+		}
+	  }
+	  steps {
+		script {
+			openshift.withCluster() {
+				openshift.withProject(env.DEV_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                    services_bc_lst.each { APPLICATION_NAME -> 
+                    println("Deploy application: [${APPLICATION_NAME}]");
+					def app = openshift.newApp("${APPLICATION_NAME}:latest")
+					app.narrow("svc").expose("--port=${PORT}");
+					def dc = openshift.selector("dc", "${APPLICATION_NAME}")
+					while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
+						println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
+						sleep 10
+					  }
+                    }
+				 }
+			  }
+		  }
+	  }
+	}
+	
 //    stage('Promote from Build to Dev') {
 //      steps {
 //        tagImage(sourceImageName: env.APP_NAME, sourceImagePath: env.BUILD, toImagePath: env.DEV)
