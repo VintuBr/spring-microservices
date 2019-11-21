@@ -4,8 +4,6 @@ openshift.withCluster() {
   env.NAMESPACE = openshift.project()
   env.POM_FILE = env.BUILD_CONTEXT_DIR ? "${env.BUILD_CONTEXT_DIR}/pom.xml" : "pom.xml"
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
-  
-  env.FORCE_RECREATE_DEV = "false"
 
   env.DISCOVERY_URL_ENV = "DISCOVERY_URL=http://discovery-service:8761"
   env.DEV_PROJECT = "spring-cloud-demo-dev"
@@ -14,6 +12,8 @@ openshift.withCluster() {
   env.PROD_TAG = "latestProd"
   env.DNS_SUFFIX = "3.134.70.57.xip.io"
 
+  env.FORCE_RECREATE_DEV = "false"
+  
   Closure create_route = { oc_app, String service_name, String project ->
                             def app_svc = openshift.selector('svc', "${service_name}");
                             def service_port = app_svc.object().spec.ports.port[0];
@@ -155,6 +155,8 @@ pipeline {
             openshift.withCluster() {
                 openshift.withProject(env.DEV_PROJECT) {
                     services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() } as Set;
+					println("Services to recreate[${FORCE_RECREATE_DEV}]: [${services_bc}]");
+					
                     if(FORCE_RECREATE_DEV) {
                         services_bc.addAll(services_bc_lst);
                     }
@@ -169,7 +171,7 @@ pipeline {
                         def dc = openshift.selector("dc", "${APPLICATION_NAME}");
                         while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
                             println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
-                            sleep 10
+                            sleep 5
                         }
                         
                         def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
