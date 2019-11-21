@@ -181,7 +181,7 @@ pipeline {
                   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                   
                   services_bc_lst.each { APPLICATION_NAME -> 
-                    println("Promoting to Production: [${APPLICATION_NAME}] with tag: [latestProd]");
+                    println("Promoting to Production: [${PROD_PROJECT}][${APPLICATION_NAME}] with tag: [latestProd]");
                     openshift.tag("${DEV_PROJECT}/${APPLICATION_NAME}:latest", "${PROD_PROJECT}/${APPLICATION_NAME}:latestProd")
                   }
               }
@@ -195,7 +195,9 @@ pipeline {
 				println("Inside script");
 				openshift.verbose();
                 openshift.withCluster() {
+				  println("With cluster");
                   openshift.withProject(env.PROD_PROJECT) {
+				    println("With project");
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     services_bc.each { APPLICATION_NAME -> 
