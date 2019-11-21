@@ -140,7 +140,7 @@ pipeline {
               openshift.withProject(env.DEV_PROJECT) {
                 def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
 
-                def recreate_env = services_bc || FORCE_RECREATE_DEV;
+                def recreate_env = services_bc || FORCE_RECREATE_DEV.toBoolean();
                 
                 println("Recreate: [${DEV_PROJECT}] environment: [${recreate_env}]");
                 
@@ -157,9 +157,11 @@ pipeline {
                     services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() } as Set;
 					println("Services to recreate[${FORCE_RECREATE_DEV}]: [${services_bc}]");
 					
-                    if(FORCE_RECREATE_DEV) {
+                    if(FORCE_RECREATE_DEV.toBoolean()) {
                         services_bc.addAll(services_bc_lst);
                     }
+					
+					println("Services to recreate[${FORCE_RECREATE_DEV}]: [${services_bc}]");
                     
                     services_bc.each { APPLICATION_NAME -> 
                         println("Deploy application: [${APPLICATION_NAME}] to development");
