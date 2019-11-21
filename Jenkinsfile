@@ -200,7 +200,7 @@ pipeline {
 				    println("With project");
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                    services_bc.each { APPLICATION_NAME -> 
+                    services_bc_lst.each { APPLICATION_NAME -> 
                     
                     def dc_exists = openshift.selector('dc', '${APPLICATION_NAME}').exists();
                     println("Promoting to Production: [${APPLICATION_NAME}] - DC exists: [${dc_exists}]");
