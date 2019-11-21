@@ -8,6 +8,7 @@ openshift.withCluster() {
   env.PROD_PROJECT = "spring-cloud-demo"
   env.DEV_TAG = "latest"
   env.PROD_TAG = "latestProd"
+  env.DNS_SUFFIX = "3.134.70.57.xip.io"
   
   def services_bc_lst = []
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
@@ -28,7 +29,30 @@ pipeline {
 
   // Pipeline Stages start here
   // Requeres at least one stage
-  stages {  
+  stages {
+
+    stage('Test') {
+      steps {
+          script {
+              openshift.withCluster() {
+				openshift.withProject(DEV_PROJECT) {
+                  //openshift.verbose();
+                  def services_bc_lst = []
+                  services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                  
+                  services_bc_lst.each { APPLICATION_NAME -> 
+                    def app_svc = openshift.selector('svc', "${APPLICATION_NAME}");
+					app_svc.describe();
+                  }
+              }
+            }
+		  }
+		  timeout(time:15, unit:'MINUTES') {
+               input message: "Promote to Production?", ok: "Promote"
+          }
+       }
+    }
+  
     // Checkout source code
     // This is required as Pipeline code is originally checkedout to
     // Jenkins Master but this will also pull this same code to this slave
@@ -151,14 +175,14 @@ pipeline {
                     services_bc.each { APPLICATION_NAME -> 
 						println("Deploy application: [${APPLICATION_NAME}] to development");
 						def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
-						//app.narrow("svc").expose("--port=${PORT}");
 						def dc = openshift.selector("dc", "${APPLICATION_NAME}");
-						
-						
 						while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
 							println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
 							sleep 10
 						  }
+						  
+						//app.narrow("svc").desbribe();
+						//app.narrow("svc").expose("--port=${PORT}");
                     }
                  }
               }
@@ -166,12 +190,14 @@ pipeline {
       }
     }
 
+	
+	
     stage('Promote to Production?') {
       steps {
           timeout(time:15, unit:'MINUTES') {
                input message: "Promote to Production?", ok: "Promote"
           }
-          script {            
+          script {
               openshift.withCluster() {
                   //openshift.verbose();
                   def services_bc_lst = []
