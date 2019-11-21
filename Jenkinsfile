@@ -30,7 +30,6 @@ pipeline {
   // Pipeline Stages start here
   // Requeres at least one stage
   stages {
-
     stage('Test') {
       steps {
           script {
@@ -42,7 +41,9 @@ pipeline {
                   
                   services_bc_lst.each { APPLICATION_NAME -> 
                     def app_svc = openshift.selector('svc', "${APPLICATION_NAME}");
-					app_svc.describe();
+					def servicePort = app_svc.object().spec.ports.port;
+					
+					println("Service port: [${servicePort}]");
                   }
               }
             }
