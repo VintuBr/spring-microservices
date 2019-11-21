@@ -24,9 +24,9 @@ openshift.withCluster() {
                             app.narrow("svc").expose("--name=${service_name}", "--port=${service_port}", "--hostname=${service_route}");
                         }
   
-  def services_bc_lst = []
+  services_bc_lst = []
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-  def svc_needs_route = ["hystrix-dashboard-service":create_route, "discovery-service":create_route, "gateway-service":create_route]
+  svc_needs_route = ["hystrix-dashboard-service":create_route, "discovery-service":create_route, "gateway-service":create_route]
   
   echo "Starting Pipeline - Current NS: [${env.NAMESPACE}] Services: [${services_bc_lst}] Needs Route: [${svc_needs_route}]"
 }
@@ -187,9 +187,7 @@ pipeline {
 						def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
 						println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
                         
-                        if(svc_needs_route.containsKey(APPLICATION_NAME)) {
-                            svc_needs_route.get(APPLICATION_NAME).call(APPLICATION_NAME, DEV_PROJECT);
-                        }
+						svc_needs_route?.get(APPLICATION_NAME).call(APPLICATION_NAME, DEV_PROJECT);
                     }
                  }
               }
@@ -197,8 +195,6 @@ pipeline {
       }
     }
 
-    
-    
     stage('Promote to Production?') {
       steps {
           timeout(time:15, unit:'MINUTES') {
