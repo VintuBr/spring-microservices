@@ -13,7 +13,7 @@ openshift.withCluster() {
   env.PROD_TAG = "latestProd"
   env.DNS_SUFFIX = "3.134.70.57.xip.io"
 
-  Closure create_route = { String service_name, String project ->
+  Closure create_route = { oc_app, String service_name, String project ->
                             def app_svc = openshift.selector('svc', "${service_name}");
                             def service_port = app_svc.object().spec.ports.port;
                             def project_name_part = project.substring(project.lastIndexOf("-")+1);
@@ -21,7 +21,7 @@ openshift.withCluster() {
                             
                             println("Creating route for service: [${service_name}][${service_port}] - [${service_route}]");
                             
-                            app.narrow("svc").expose("--name=${service_name}", "--port=${service_port}", "--hostname=${service_route}");
+                            oc_app.narrow("svc").expose("--name=${service_name}", "--port=${service_port}", "--hostname=${service_route}");
                         }
   
   services_bc_lst = []
@@ -187,7 +187,7 @@ pipeline {
 						def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
 						println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
                         
-						svc_needs_route?.get(APPLICATION_NAME).call(APPLICATION_NAME, DEV_PROJECT);
+						svc_needs_route?.get(APPLICATION_NAME).call(app, APPLICATION_NAME, DEV_PROJECT);
                     }
                  }
               }
