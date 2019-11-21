@@ -4,15 +4,29 @@ openshift.withCluster() {
   env.NAMESPACE = openshift.project()
   env.POM_FILE = env.BUILD_CONTEXT_DIR ? "${env.BUILD_CONTEXT_DIR}/pom.xml" : "pom.xml"
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
+  
+  env.FORCE_RECREATE_DEV = "true"
+  
   env.DEV_PROJECT = "spring-cloud-demo-dev"
-  env.PROD_PROJECT = "spring-cloud-demo"
   env.DEV_TAG = "latest"
+  env.PROD_PROJECT = "spring-cloud-demo"
   env.PROD_TAG = "latestProd"
   env.DNS_SUFFIX = "3.134.70.57.xip.io"
+
+  Closure create_route = { String service_name, String project ->
+                            def app_svc = openshift.selector('svc', "${service_name}");
+                            def service_port = app_svc.object().spec.ports.port;
+                            def project_name_part = project.substring(project.lastIndexOf("-")+1);
+                            def service_route = "http://${service_name}-${project_name_part}.${DNS_SUFFIX}";
+                            
+                            println("Creating route for service: [${service_name}][${service_port}] - [${service_route}]");
+                            
+                            app.narrow("svc").expose("--name=${service_name}", "--port=${service_port}", "--hostname=${service_route}");
+                        }
   
   def services_bc_lst = []
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-  def needsRoute = ["hystrix-dashboard-service", "discovery-service", "gateway-service"]
+  def svc_needs_route = ["hystrix-dashboard-service":create_route, "discovery-service":create_route, "gateway-service":create_route]
   
   echo "Starting Pipeline - Current NS: [${env.NAMESPACE}] Services: [${services_bc_lst}] Needs Route: [${needsRoute}]"
 }
@@ -34,21 +48,21 @@ pipeline {
       steps {
           script {
               openshift.withCluster() {
-				openshift.withProject(DEV_PROJECT) {
+                openshift.withProject(DEV_PROJECT) {
                   //openshift.verbose();
                   def services_bc_lst = []
                   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                   
                   services_bc_lst.each { APPLICATION_NAME -> 
                     def app_svc = openshift.selector('svc', "${APPLICATION_NAME}");
-					def servicePort = app_svc.object().spec.ports.port;
-					
-					println("Service port: [${servicePort}]");
+                    def servicePort = app_svc.object().spec.ports.port;
+                    
+                    println("Service port: [${servicePort}]");
                   }
               }
             }
-		  }
-		  timeout(time:15, unit:'MINUTES') {
+          }
+          timeout(time:15, unit:'MINUTES') {
                input message: "Promote to Production?", ok: "Promote"
           }
        }
@@ -159,8 +173,12 @@ pipeline {
                 def services_bc_lst = []
                 services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                 def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
-                
-                return services_bc;
+
+				def recreate_env = services_bc || FORCE_RECREATE_DEV;
+				
+				println("Recreate: [${DEV_PROJECT}] environment: [${recreate_env}]");
+				
+                return recreate_env;
               }
             }
         }
@@ -172,18 +190,27 @@ pipeline {
                 openshift.withProject(env.DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                    def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
+                    services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() } as Set;
+                    if(FORCE_RECREATE_DEV) {
+                        services_bc.addAll(services_bc_lst);
+                    }
+                    
                     services_bc.each { APPLICATION_NAME -> 
-						println("Deploy application: [${APPLICATION_NAME}] to development");
-						def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
-						def dc = openshift.selector("dc", "${APPLICATION_NAME}");
-						while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
-							println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
-							sleep 10
-						  }
-						  
-						//app.narrow("svc").desbribe();
-						//app.narrow("svc").expose("--port=${PORT}");
+                        println("Deploy application: [${APPLICATION_NAME}] to development");
+                        openshift.selector('dc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                        openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                        openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")                     
+                        
+                        def app = openshift.newApp("${APPLICATION_NAME}:${DEV_TAG}", "-e=DISCOVERY_URL=http://discovery-service:8761");
+                        def dc = openshift.selector("dc", "${APPLICATION_NAME}");
+                        while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
+                            println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
+                            sleep 10
+                        }
+                        
+                        if(svc_needs_route.containsKey(APPLICATION_NAME)) {
+                            svc_needs_route.get(APPLICATION_NAME).call(APPLICATION_NAME, DEV_PROJECT);
+                        }
                     }
                  }
               }
@@ -191,8 +218,8 @@ pipeline {
       }
     }
 
-	
-	
+    
+    
     stage('Promote to Production?') {
       steps {
           timeout(time:15, unit:'MINUTES') {
@@ -205,8 +232,8 @@ pipeline {
                   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                   
                   services_bc_lst.each { APPLICATION_NAME -> 
-                    println("Promoting to Production: [${PROD_PROJECT}][${APPLICATION_NAME}] with tag: [latestProd]");
-                    openshift.tag("${DEV_PROJECT}/${APPLICATION_NAME}:latest", "${PROD_PROJECT}/${APPLICATION_NAME}:latestProd")
+                    println("Promoting to Production: [${PROD_PROJECT}][${APPLICATION_NAME}] with tag: [${PROD_TAG}]");
+                    openshift.tag("${DEV_PROJECT}/${APPLICATION_NAME}:${DEV_TAG}", "${PROD_PROJECT}/${APPLICATION_NAME}:${PROD_TAG}")
                   }
               }
             }
@@ -229,7 +256,7 @@ pipeline {
                             openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
                             openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")
                         }
-                        openshift.newApp("${APPLICATION_NAME}:latestProd", "-e=DISCOVERY_URL=http://discovery-service:8761").narrow("svc");
+                        openshift.newApp("${APPLICATION_NAME}:${PROD_TAG}", "-e=DISCOVERY_URL=http://discovery-service:8761");
                  }
                }
              }
