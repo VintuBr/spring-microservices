@@ -4,10 +4,12 @@ openshift.withCluster() {
   env.NAMESPACE = openshift.project()
   env.POM_FILE = env.BUILD_CONTEXT_DIR ? "${env.BUILD_CONTEXT_DIR}/pom.xml" : "pom.xml"
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
-  //env.BUILD = "${env.NAMESPACE}"
   env.DEV_PROJECT = "spring-cloud-demo-dev"
   env.PROD_PROJECT = "spring-cloud-demo"
   echo "Starting Pipeline for ${APP_NAME} - ${env.NAMESPACE} - POM: ${POM_FILE}..."
+
+  def services_bc_lst = []
+  services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
 }
 
 pipeline {
@@ -77,14 +79,7 @@ pipeline {
                 openshift.withProject(DEV_PROJECT) {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-
-                    services_bc_lst.each { svc ->
-                        //def svc_bc_name = svc + "-bc";
-                        def svc_bc_name = svc;
-                        def svc_bc_exists = openshift.selector("bc", svc_bc_name).exists();
-                        println("Service BC: [${svc_bc_name}] exists: [${svc_bc_exists}]");
-                    }
-                
+                    
                     services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it).exists() };
                     
                     return services_bc;
@@ -99,10 +94,8 @@ pipeline {
                     openshift.withProject(DEV_PROJECT) {
                         def services_bc_lst = []
                         services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                    
+                        
                         def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("bc", svc).exists() };
-                        println("Step execution: [${services_bc}]");
-
                         services_bc.each { service ->
                             openshift.newBuild("--name=${service}", "--docker-image=docker.io/java:8-alpine", "--binary=true")
                         }
@@ -120,7 +113,7 @@ pipeline {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     services_bc_lst.each { APPLICATION_NAME -> 
-                        println("Building application: [${APPLICATION_NAME}]");
+                        println("Building application image: [${APPLICATION_NAME}]");
                         openshift.selector("bc", "${APPLICATION_NAME}").startBuild("--from-archive=${ARTIFACT_FOLDER}/${APPLICATION_NAME}_${BUILD_NUMBER}.tar.gz", "--wait=true")
                     }
                 }
@@ -137,7 +130,6 @@ pipeline {
                 def services_bc_lst = []
                 services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                 def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
-                println("[When] Deploy to Dev: [${services_bc}]");
                 
                 return services_bc;
               }
@@ -152,12 +144,13 @@ pipeline {
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
-                    println("Step execution - Will create DC for: [${services_bc}]");
                     services_bc.each { APPLICATION_NAME -> 
-                    println("Deploy application: [${APPLICATION_NAME}]");
+                    println("Deploy application: [${APPLICATION_NAME}] to development");
                     def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
                     //app.narrow("svc").expose("--port=${PORT}");
                     def dc = openshift.selector("dc", "${APPLICATION_NAME}");
+					
+					
                     while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
                         println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
                         sleep 10
@@ -192,27 +185,21 @@ pipeline {
     stage('Rollout to Production') {
       steps {
           script {
-				println("Inside script");
-				openshift.verbose();
+                //openshift.verbose();
                 openshift.withCluster() {
-				  println("With cluster");
                   openshift.withProject(env.PROD_PROJECT) {
-				    println("With project");
                     def services_bc_lst = []
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                    services_bc_lst.each { APPLICATION_NAME -> 
-                    
-                    def dc_exists = openshift.selector('dc', "${APPLICATION_NAME}").exists();
-                    println("Promoting to Production: [${APPLICATION_NAME}] - DC exists: [${dc_exists}]");
-                    
-                    if (openshift.selector('dc', "${APPLICATION_NAME}").exists()) {
-                        println("Promoting to Production: [${APPLICATION_NAME}] deleting: [dc][svc][route]");
-                        openshift.selector('dc', "${APPLICATION_NAME}").delete("--ignore-not-found")
-                        openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
-                        openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")
-                    }
-                    openshift.newApp("${APPLICATION_NAME}:latestProd", "-e=DISCOVERY_URL=http://discovery-service:8761").narrow("svc");
-                }
+                    services_bc_lst.each { APPLICATION_NAME ->                     
+                        def dc_exists = openshift.selector('dc', "${APPLICATION_NAME}").exists();
+                        if (openshift.selector('dc', "${APPLICATION_NAME}").exists()) {
+                            println("Promoting to Production: [${APPLICATION_NAME}] deleting: [dc][svc][route] and recreating");
+                            openshift.selector('dc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                            openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                            openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                        }
+                        openshift.newApp("${APPLICATION_NAME}:latestProd", "-e=DISCOVERY_URL=http://discovery-service:8761").narrow("svc");
+                 }
                }
              }
           }
