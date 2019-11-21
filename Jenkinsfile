@@ -28,7 +28,7 @@ openshift.withCluster() {
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
   def svc_needs_route = ["hystrix-dashboard-service":create_route, "discovery-service":create_route, "gateway-service":create_route]
   
-  echo "Starting Pipeline - Current NS: [${env.NAMESPACE}] Services: [${services_bc_lst}] Needs Route: [${needsRoute}]"
+  echo "Starting Pipeline - Current NS: [${env.NAMESPACE}] Services: [${services_bc_lst}] Needs Route: [${svc_needs_route}]"
 }
 
 pipeline {
