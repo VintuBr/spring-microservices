@@ -44,30 +44,6 @@ pipeline {
   // Pipeline Stages start here
   // Requeres at least one stage
   stages {
-    stage('Test') {
-      steps {
-          script {
-              openshift.withCluster() {
-                openshift.withProject(DEV_PROJECT) {
-                  //openshift.verbose();
-                  def services_bc_lst = []
-                  services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                  
-                  services_bc_lst.each { APPLICATION_NAME -> 
-                    def app_svc = openshift.selector('svc', "${APPLICATION_NAME}");
-                    def servicePort = app_svc.object().spec.ports.port;
-                    
-                    println("Service port: [${servicePort}]");
-                  }
-              }
-            }
-          }
-          timeout(time:15, unit:'MINUTES') {
-               input message: "Promote to Production?", ok: "Promote"
-          }
-       }
-    }
-  
     // Checkout source code
     // This is required as Pipeline code is originally checkedout to
     // Jenkins Master but this will also pull this same code to this slave
@@ -207,6 +183,9 @@ pipeline {
                             println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
                             sleep 10
                         }
+						
+						def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
+						println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
                         
                         if(svc_needs_route.containsKey(APPLICATION_NAME)) {
                             svc_needs_route.get(APPLICATION_NAME).call(APPLICATION_NAME, DEV_PROJECT);
