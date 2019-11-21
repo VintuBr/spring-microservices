@@ -15,9 +15,8 @@ openshift.withCluster() {
 
   Closure create_route = { oc_app, String service_name, String project ->
                             def app_svc = openshift.selector('svc', "${service_name}");
-                            def service_port = app_svc.object().spec.ports.port;
-                            def project_name_part = project.substring(project.lastIndexOf("-")+1);
-                            def service_route = "http://${service_name}-${project_name_part}.${DNS_SUFFIX}";
+                            def service_port = app_svc.object().spec.ports.port[0];
+                            def service_route = "${service_name}-${project}.${DNS_SUFFIX}";
                             
                             println("Creating route for service: [${service_name}][${service_port}] - [${service_route}]");
                             
