@@ -186,7 +186,7 @@ pipeline {
 						def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
 						println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
                         
-						svc_needs_route?.get(APPLICATION_NAME).call(app, APPLICATION_NAME, DEV_PROJECT);
+						svc_needs_route?.get(APPLICATION_NAME)?.call(app, APPLICATION_NAME, DEV_PROJECT);
                     }
                  }
               }
