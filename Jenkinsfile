@@ -10,6 +10,8 @@ openshift.withCluster() {
 
   def services_bc_lst = []
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+  
+  
 }
 
 pipeline {
@@ -53,7 +55,7 @@ pipeline {
     stage('Store Artifact'){
       steps{
         script{
-            SERVICE_PROJECTS.split(',').each { APPLICATION_NAME ->
+            services_bc_lst.each { APPLICATION_NAME ->
                 def safeBuildName  = "${APPLICATION_NAME}_${BUILD_NUMBER}",
                     artifactFolder = "${ARTIFACT_FOLDER}",
                     fullFileName   = "${safeBuildName}.tar.gz",
@@ -77,9 +79,6 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
-                    def services_bc_lst = []
-                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
-                    
                     services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it).exists() };
                     
                     return services_bc;
