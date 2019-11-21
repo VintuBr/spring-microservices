@@ -207,9 +207,9 @@ pipeline {
                     
                     if (openshift.selector('dc', "${APPLICATION_NAME}").exists()) {
                         println("Promoting to Production: [${APPLICATION_NAME}] deleting: [dc][svc][route]");
-                        openshift.selector('dc', "${APPLICATION_NAME}").delete()
-                        openshift.selector('svc', "${APPLICATION_NAME}").delete()
-                        openshift.selector('route', "${APPLICATION_NAME}").delete()
+                        openshift.selector('dc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                        openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
+                        openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")
                     }
                     openshift.newApp("${APPLICATION_NAME}:latestProd", "-e=DISCOVERY_URL=http://discovery-service:8761").narrow("svc");
                 }
