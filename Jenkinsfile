@@ -6,7 +6,8 @@ openshift.withCluster() {
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
   
   env.FORCE_RECREATE_DEV = "true"
-  
+
+  env.DISCOVERY_URL_ENV = "DISCOVERY_URL=http://discovery-service:8761"
   env.DEV_PROJECT = "spring-cloud-demo-dev"
   env.DEV_TAG = "latest"
   env.PROD_PROJECT = "spring-cloud-demo"
@@ -149,10 +150,10 @@ pipeline {
                 services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                 def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
 
-				def recreate_env = services_bc || FORCE_RECREATE_DEV;
-				
-				println("Recreate: [${DEV_PROJECT}] environment: [${recreate_env}]");
-				
+                def recreate_env = services_bc || FORCE_RECREATE_DEV;
+                
+                println("Recreate: [${DEV_PROJECT}] environment: [${recreate_env}]");
+                
                 return recreate_env;
               }
             }
@@ -176,17 +177,17 @@ pipeline {
                         openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
                         openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")                     
                         
-                        def app = openshift.newApp("${APPLICATION_NAME}:${DEV_TAG}", "-e=DISCOVERY_URL=http://discovery-service:8761");
+                        def app = openshift.newApp("${APPLICATION_NAME}:${DEV_TAG}", "-e=${DISCOVERY_URL_ENV}");
                         def dc = openshift.selector("dc", "${APPLICATION_NAME}");
                         while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
                             println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
                             sleep 10
                         }
-						
-						def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
-						println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
                         
-						svc_needs_route?.get(APPLICATION_NAME)?.call(app, APPLICATION_NAME, DEV_PROJECT);
+                        def needs_route = svc_needs_route.containsKey(APPLICATION_NAME);
+                        println("Service: [${APPLICATION_NAME}] needs route: [${needs_route}]");
+                        
+                        svc_needs_route?.get(APPLICATION_NAME)?.call(app, APPLICATION_NAME, DEV_PROJECT);
                     }
                  }
               }
@@ -230,7 +231,8 @@ pipeline {
                             openshift.selector('svc', "${APPLICATION_NAME}").delete("--ignore-not-found")
                             openshift.selector('route', "${APPLICATION_NAME}").delete("--ignore-not-found")
                         }
-                        openshift.newApp("${APPLICATION_NAME}:${PROD_TAG}", "-e=DISCOVERY_URL=http://discovery-service:8761");
+                        def app = openshift.newApp("${APPLICATION_NAME}:${PROD_TAG}", "-e=${DISCOVERY_URL_ENV}");
+                        svc_needs_route?.get(APPLICATION_NAME)?.call(app, APPLICATION_NAME, PROD_PROJECT);
                  }
                }
              }
