@@ -6,12 +6,14 @@ openshift.withCluster() {
   env.APP_NAME = "${JOB_NAME}".replaceAll(/-build.*/, '')
   env.DEV_PROJECT = "spring-cloud-demo-dev"
   env.PROD_PROJECT = "spring-cloud-demo"
-  echo "Starting Pipeline for ${APP_NAME} - ${env.NAMESPACE} - POM: ${POM_FILE}..."
-
+  env.DEV_TAG = "latest"
+  env.PROD_TAG = "latestProd"
+  
   def services_bc_lst = []
   services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+  def needsRoute = ["hystrix-dashboard-service", "discovery-service", "gateway-service"]
   
-  
+  echo "Starting Pipeline - Current NS: [${env.NAMESPACE}] Services: [${services_bc_lst}] Needs Route: [${needsRoute}]"
 }
 
 pipeline {
@@ -55,7 +57,7 @@ pipeline {
     stage('Store Artifact'){
       steps{
         script{
-            services_bc_lst.each { APPLICATION_NAME ->
+            SERVICE_PROJECTS.split(',').each { APPLICATION_NAME ->
                 def safeBuildName  = "${APPLICATION_NAME}_${BUILD_NUMBER}",
                     artifactFolder = "${ARTIFACT_FOLDER}",
                     fullFileName   = "${safeBuildName}.tar.gz",
@@ -79,6 +81,9 @@ pipeline {
             expression {
               openshift.withCluster() {
                 openshift.withProject(DEV_PROJECT) {
+                    def services_bc_lst = []
+                    services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
+                    
                     services_bc = services_bc_lst.findAll{ !openshift.selector("bc", it).exists() };
                     
                     return services_bc;
@@ -144,16 +149,16 @@ pipeline {
                     services_bc_lst.addAll(SERVICE_PROJECTS.split(','));
                     def services_bc = services_bc_lst.findAll{ svc -> !openshift.selector("dc", svc).exists() };
                     services_bc.each { APPLICATION_NAME -> 
-                    println("Deploy application: [${APPLICATION_NAME}] to development");
-                    def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
-                    //app.narrow("svc").expose("--port=${PORT}");
-                    def dc = openshift.selector("dc", "${APPLICATION_NAME}");
-					
-					
-                    while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
-                        println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
-                        sleep 10
-                      }
+						println("Deploy application: [${APPLICATION_NAME}] to development");
+						def app = openshift.newApp("${APPLICATION_NAME}:latest", "-e=DISCOVERY_URL=http://discovery-service:8761");
+						//app.narrow("svc").expose("--port=${PORT}");
+						def dc = openshift.selector("dc", "${APPLICATION_NAME}");
+						
+						
+						while (dc.object().spec.replicas != dc.object().status.availableReplicas) {
+							println("Replicas - spec: [${dc.object().spec.replicas}] - available: [${dc.object().status.availableReplicas}]")
+							sleep 10
+						  }
                     }
                  }
               }
